@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+<head><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Trends Admin_Panel</title>
+    <style> .card {
+        background-color:rgb(157, 124, 26);
+        border-radius: 5px;
+        padding: 20px;
+        width: auto;
+        max-width:600px;
+        margin: 10% auto;
+        
+    }
+
+    input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+       
+       
+
+        button {
+            cursor: pointer;
+        }
+        .minimalistBlack {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .minimalistBlack td, .minimalistBlack th {
+        border: 1px solid #000000;
+        padding: 5px 10px;
+        text-align: left;
+    }
+
+    .minimalistBlack th {
+       
+        color: #ffffff;
+    }
+
+    </style>
+</head>
+
+<body>
+
+     <!-- Login Container -->
+     <div id="login-container"class="card text-center">
+        <h2 class="text-2xl font-semibold mb-4"> Admin_Login</h2>
+        <div class="card-body">
+            <h5 class="card-title">
+              <label>Email:</label>
+              <input type="email" id="email" class="border p-2 rounded-md" required placeholder=" Enter Admin Email">
+              <br>
+              <br>
+              <p class="card-text"><label>Password:</label>
+                  <input type="password" id="password" class="border p-2 rounded-md" required
+                  placeholder="Enter Admin Password ">
+              </p></h5>
+            <a href="#" class="btn btn-primary mb-4"
+            onclick="login()"><h5>Login</h5></a>
+          </div>
+    </div>
+
+      <!-- Dashboard Container -->
+      <div id="dashboard-container"class="card text-center">
+        <h2 class="text-2xl font-semibold mb-4">Welcome Admin!</h2>
+        <!-- User Table -->
+        <table id="userTable" class="minimalistBlack">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th> Change Role</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <br>
+        <button id="logoutButton" class="btn btn-primary" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Firebase Script -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUDD5vSF_Qe1pSjTzDNcSLbc2M92vu5wI",
+            authDomain: "laptoprental-12e8e.firebaseapp.com",
+            projectId: "laptoprental-12e8e",
+            storageBucket: "laptoprental-12e8e.appspot.com",
+            messagingSenderId: "618087328068",
+            appId: "1:618087328068:web:9860dae469334a43230f11",
+            measurementId: "G-P2Y3QF4X71"
+        };
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const auth = getAuth(firebaseApp);
+
+        // DOM Elements
+        const loginContainer = document.getElementById('login-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const logoutButton = document.getElementById('logoutButton');
+        const userTableBody = document.querySelector('#userTable tbody');
+
+
+        // Define functions globally
+        window.updateUI = (user) => {
+            if (user) {
+                loginContainer.style.display = 'none';
+                dashboardContainer.style.display = 'block';
+                fetchAndDisplayUserData();
+            } else {
+                loginContainer.style.display = 'block';
+                dashboardContainer.style.display = 'none';
+                clearUserTable();
+            }
+        };
+
+        window.login = async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                const user = auth.currentUser;
+                if (user.email != "admin@gmail.com") {
+                    throw "Not authorized"
+
+                }
+                window.updateUI(user);
+            } catch (error) {
+                console.error('Error logging in:', error.message);
+                await signOut(auth);
+                window.alert('Not authorised')
+                window.updateUI(null);
+            }
+        };
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                window.updateUI(null);
+            } catch (error) {
+                console.error('Error logging out:', error.message);
+            }
+        };
+
+        const fetchAndDisplayUserData = async () => {
+            const firestore = getFirestore();
+            const usersCollection = collection(firestore, 'users');
+
+            try {
+                const querySnapshot = await getDocs(usersCollection);
+
+                clearUserTable();
+
+                querySnapshot.forEach((doc) => {
+                    const userData = doc.data();
+                    addUserToTable(doc.id, userData);
+                });
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+            }
+        };
+
+        const clearUserTable = () => {
+            userTableBody.innerHTML = '';
+        };
+
+        const addUserToTable = (id, userData) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${userData.email}</td><td>${userData.roles[0]}</td><td><select onchange="changeUserRole('${id}', this.value)">
+                      <option value="travel_agency" ${userData.roles[0] === 'travel_agency' ? 'selected' : ''}>travel_agency</option>
+                      <option value="user" ${userData.roles[0] === 'user' ? 'selected' : ''}>user</option>
+                    </select></td>`;
+            userTableBody.appendChild(row);
+        };
+
+        window.changeUserRole = async (userId, newRole) => {
+            const firestore = getFirestore();
+            const userDoc = doc(firestore, 'users', userId);
+
+            try {
+                await updateDoc(userDoc, { roles: [newRole] });
+                fetchAndDisplayUserData(); // Refresh the table after updating the role
+            } catch (error) {
+                console.error('Error updating user role:', error);
+            }
+        };
+
+        auth.onAuthStateChanged((user) => {
+            window.updateUI(user);
+        });
+    </script>
+</body>
+
+</html>
